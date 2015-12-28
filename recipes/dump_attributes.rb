@@ -18,24 +18,19 @@
 if node['chef']['dump_attributes'] == 'true'
   require 'pathname'
   
-  d = directory Pathname(node['chef']['dump']['file']).dirname.to_s do
-    action :nothing
+  directory Pathname(node['chef']['dump']['file']) do
+    action :create
   end
-  d.run_action(:create)
   
-  f = file node['chef']['dump']['file'] do
+  file node['chef']['dump']['file'] do
     owner "root"
     mode "0400"
-    action :nothing
+    action :create
   end
-  f.run_action(:create)
   
-  l = log "Dumping attributes to #{node['chef']['dump']['file']}." do
-    action :nothing
-  end
-  l.run_action(:write)
+  log "Dumping attributes to #{node['chef']['dump']['file']}"
   
-  r = ruby_block "dump_node_attributes" do
+  ruby_block "dump_node_attributes" do
     block do
       require 'json'
   
@@ -54,7 +49,6 @@ if node['chef']['dump_attributes'] == 'true'
       
       File.open(node['chef']['dump']['file'], 'w') { |file| file.write(JSON.pretty_generate(attrs)) }
     end
-    action :nothing
+    action :run
   end
-  r.run_action(:create)
 end
