@@ -15,40 +15,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if node['chef']['dump_attributes'] == 'true'
-  require 'pathname'
-  
-  directory Pathname(node['chef']['dump']['file']) do
-    action :create
+require 'pathname'
+
+directory Pathname(node['chef']['dump']['file']) do
+  action :create
+end
+
+file node['chef']['dump']['file'] do
+  owner "root"
+  mode "0400"
+  action :create
+end
+
+log "Dumping attributes to #{node['chef']['dump']['file']}"
+
+ruby_block "dump_node_attributes" do
+  block do
+    require 'json'
+
+    attrs = JSON.parse("{}")
+    
+    # possible attribute methods: run_list, override_attrs, default_attrs, normal_attrs, automatic_attrs
+    attrs = attrs.merge(node.default_attrs) unless node.default_attrs.empty?
+    attrs = attrs.merge(node.normal_attrs) unless node.normal_attrs.empty?
+    attrs = attrs.merge(node.override_attrs) unless node.override_attrs.empty?
+    
+    # see also, https://github.com/opscode/chef-server-webui/pull/7
+    recipe_json = "{ \"run_list\": \[ "
+    recipe_json << node.run_list.expand(node.chef_environment).recipes.map! { |k| "\"#{k}\"" }.join(",")
+    recipe_json << " \] }"
+    attrs = attrs.merge(JSON.parse(recipe_json))
+    
+    File.open(node['chef']['dump']['file'], 'w') { |file| file.write(JSON.pretty_generate(attrs)) }
   end
-  
-  file node['chef']['dump']['file'] do
-    owner "root"
-    mode "0400"
-    action :create
-  end
-  
-  log "Dumping attributes to #{node['chef']['dump']['file']}"
-  
-  ruby_block "dump_node_attributes" do
-    block do
-      require 'json'
-  
-      attrs = JSON.parse("{}")
-      
-      # possible attribute methods: run_list, override_attrs, default_attrs, normal_attrs, automatic_attrs
-      attrs = attrs.merge(node.default_attrs) unless node.default_attrs.empty?
-      attrs = attrs.merge(node.normal_attrs) unless node.normal_attrs.empty?
-      attrs = attrs.merge(node.override_attrs) unless node.override_attrs.empty?
-      
-      # see also, https://github.com/opscode/chef-server-webui/pull/7
-      recipe_json = "{ \"run_list\": \[ "
-      recipe_json << node.run_list.expand(node.chef_environment).recipes.map! { |k| "\"#{k}\"" }.join(",")
-      recipe_json << " \] }"
-      attrs = attrs.merge(JSON.parse(recipe_json))
-      
-      File.open(node['chef']['dump']['file'], 'w') { |file| file.write(JSON.pretty_generate(attrs)) }
-    end
-    action :run
-  end
+  action :run
 end
