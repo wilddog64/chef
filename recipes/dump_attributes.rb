@@ -17,7 +17,8 @@
 
 require 'pathname'
 
-directory Pathname(node['chef']['dump']['file']) do
+dirname = Pathname(node['chef']['dump']['file']).split()[0]
+directory dirname  do
   action :create
 end
 
