@@ -18,7 +18,7 @@
 require 'pathname'
 
 file_object = Pathname.new(node['chef']['dump']['file'])
-directory file_object.dirname do
+directory file_object.dirname.to_s do
   action :create
 end
 
